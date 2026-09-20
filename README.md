@@ -57,26 +57,34 @@ cp dispatch.example.yaml dispatch.yaml
 
 `dispatch.yaml` 已在 `.gitignore` 中，不会被提交。
 
-### 2. 准备 Worker 镜像（二选一）
-
-**方式 A：本地构建（推荐，全程国内源）**
+### 2. 一键构建
 
 ```bash
-docker build -t cairn-worker-container:cn ./container
+./build.sh
 ```
 
-然后将 `dispatch.yaml` 中的 `container.image` 改为：
+脚本会构建全部镜像（worker 容器镜像 + cairn-app），全程走国内源，并在结束后列出镜像清单。
+
+```bash
+./build.sh              # 构建全部镜像（worker 已存在则跳过）
+./build.sh worker       # 只构建 worker 容器镜像
+./build.sh app          # 只构建 cairn-app（server + dispatcher）
+./build.sh --force      # 强制重建 worker 镜像
+./build.sh --no-cache   # 完全不用缓存重建
+```
+
+构建完成后，确保 `dispatch.yaml` 中的 `container.image` 指向本地镜像（脚本会自动检测并提示）：
 
 ```yaml
 container:
   image: "cairn-worker-container:cn"
 ```
 
-**方式 B：从国内镜像拉取预构建镜像**
-
-```bash
-docker pull ghcr.nju.edu.cn/oritera/cairn-worker-container:latest
-```
+> 也可以不构建，直接从国内镜像拉取预构建的 worker 镜像：
+>
+> ```bash
+> docker pull ghcr.nju.edu.cn/oritera/cairn-worker-container:latest
+> ```
 
 ### 3. 一键启动
 
@@ -89,6 +97,7 @@ docker pull ghcr.nju.edu.cn/oritera/cairn-worker-container:latest
 ### 管理命令
 
 ```bash
+./build.sh                 # 一键构建全部镜像
 ./cairnctl.sh start        # 一键启动（自动等待 server 就绪）
 ./cairnctl.sh stop         # 停止并清理容器
 ./cairnctl.sh restart      # 重启
