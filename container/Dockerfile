@@ -1,6 +1,13 @@
 FROM --platform=amd64 docker.m.daocloud.io/kalilinux/kali-rolling:latest
 
-RUN apt update && \
+# Domestic mirrors: apt -> USTC, pip -> Aliyun, npm -> npmmirror, playwright -> npmmirror, github -> gh-proxy
+ENV PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/ \
+    PLAYWRIGHT_DOWNLOAD_HOST=https://registry.npmmirror.com/-/binary/playwright \
+    GH_PROXY=https://gh-proxy.com/
+
+RUN rm -f /etc/apt/sources.list /etc/apt/sources.list.d/* && \
+    echo "deb http://mirrors.ustc.edu.cn/kali kali-rolling main contrib non-free non-free-firmware" > /etc/apt/sources.list.d/kali.list && \
+    apt update && \
     apt -y install kali-linux-headless && \
     apt clean && \
     rm -rf /var/lib/apt/lists/*
@@ -12,55 +19,56 @@ USER kali
 RUN sudo apt update && \
     sudo apt install -y bsdextrautils npm jq iputils-ping sshpass ncat rlwrap \
     bloodyad coercer enum4linux-ng pwncat chisel-common-binaries \
-    dirsearch yq krb5-user gitleaks naabu nikto netexec adb && \
+    dirsearch yq krb5-user gitleaks naabu nikto netexec adb \
+    python3-pwntools python3-pymongo && \
     sudo apt clean && \
     sudo rm -rf /var/lib/apt/lists/* && \
-    pip3 install pwntools pymongo --break-system-packages && \
+    npm config set registry https://registry.npmmirror.com && \
+    sudo npm config set registry https://registry.npmmirror.com && \
     sudo npm install -g @playwright/cli@latest && \
     cd /tmp && playwright-cli install
 
 RUN cd /tmp && \
-    wget -q "https://github.com/projectdiscovery/katana/releases/download/v1.5.0/katana_1.5.0_linux_amd64.zip" -O katana.zip && \
-    wget -q "https://github.com/projectdiscovery/nuclei/releases/download/v3.7.1/nuclei_3.7.1_linux_amd64.zip" -O nuclei.zip && \
-    wget -q "https://github.com/hahwul/dalfox/releases/download/v2.12.0/dalfox-linux-amd64.tar.gz" -O dalfox.tar.gz && \
-    wget -q "https://github.com/BishopFox/cloudfox/releases/download/v2.0.1/cloudfox-linux-amd64.zip" -O cloudfox.zip && \
-    wget -q "https://github.com/ropnop/kerbrute/releases/download/v1.0.3/kerbrute_linux_amd64" -O kerbrute && \
-    git clone --depth 1 "https://github.com/projectdiscovery/nuclei-templates.git" /home/kali/.local/nuclei-templates && \
+    wget -q "${GH_PROXY}https://github.com/projectdiscovery/katana/releases/download/v1.5.0/katana_1.5.0_linux_amd64.zip" -O katana.zip && \
+    wget -q "${GH_PROXY}https://github.com/projectdiscovery/nuclei/releases/download/v3.7.1/nuclei_3.7.1_linux_amd64.zip" -O nuclei.zip && \
+    wget -q "${GH_PROXY}https://github.com/hahwul/dalfox/releases/download/v2.12.0/dalfox-linux-amd64.tar.gz" -O dalfox.tar.gz && \
+    wget -q "${GH_PROXY}https://github.com/BishopFox/cloudfox/releases/download/v2.0.1/cloudfox-linux-amd64.zip" -O cloudfox.zip && \
+    wget -q "${GH_PROXY}https://github.com/ropnop/kerbrute/releases/download/v1.0.3/kerbrute_linux_amd64" -O kerbrute && \
+    git clone --depth 1 "${GH_PROXY}https://github.com/projectdiscovery/nuclei-templates.git" /home/kali/.local/nuclei-templates && \
     unzip -q katana.zip katana && sudo mv katana /usr/local/bin/ && \
     unzip -q nuclei.zip nuclei && sudo mv nuclei /usr/local/bin/ && \
     tar -xzf dalfox.tar.gz && sudo mv dalfox-linux-amd64 /usr/local/bin/dalfox && \
     unzip -q cloudfox.zip cloudfox/cloudfox && sudo mv cloudfox/cloudfox /usr/local/bin/ && \
     sudo cp kerbrute /usr/local/bin/ && \
-    nuclei -ut && \
     sudo rm -rf /tmp/*
 
 RUN mkdir -p /home/kali/knowledges && cd /home/kali/knowledges && \
-    git clone --depth=1 https://github.com/swisskyrepo/PayloadsAllTheThings.git && \
-    git clone --depth=1 https://github.com/swisskyrepo/InternalAllTheThings.git && \
-    git clone --depth=1 https://github.com/HackTricks-wiki/hacktricks.git && \
-    git clone --depth=1 https://github.com/HackTricks-wiki/hacktricks-cloud.git
+    git clone --depth=1 ${GH_PROXY}https://github.com/swisskyrepo/PayloadsAllTheThings.git && \
+    git clone --depth=1 ${GH_PROXY}https://github.com/swisskyrepo/InternalAllTheThings.git && \
+    git clone --depth=1 ${GH_PROXY}https://github.com/HackTricks-wiki/hacktricks.git && \
+    git clone --depth=1 ${GH_PROXY}https://github.com/HackTricks-wiki/hacktricks-cloud.git
 
 RUN mkdir -p /home/kali/tools && cd /home/kali/tools && \
-    wget -q "https://github.com/frohoff/ysoserial/releases/download/v0.0.6/ysoserial-all.jar" -O ysoserial.jar && \
-    git clone --depth=1 https://github.com/ticarpi/jwt_tool.git && \
+    wget -q "${GH_PROXY}https://github.com/frohoff/ysoserial/releases/download/v0.0.6/ysoserial-all.jar" -O ysoserial.jar && \
+    git clone --depth=1 ${GH_PROXY}https://github.com/ticarpi/jwt_tool.git && \
     cd jwt_tool && pip3 install -r requirements.txt --break-system-packages && \
-    git clone --depth=1 https://github.com/IOActive/jdwp-shellifier.git
+    git clone --depth=1 ${GH_PROXY}https://github.com/IOActive/jdwp-shellifier.git
 
 RUN mkdir -p /home/kali/pocs && cd /home/kali/pocs && \
-    git clone --depth=1 https://github.com/iSee857/CVE-PoC.git && \
-    git clone --depth=1 https://github.com/zhzyker/exphub.git && \
-    git clone --depth=1 https://github.com/passwa11/2023Hvv_.git && \
-    git clone --depth=1 https://github.com/Threekiii/Awesome-POC.git && \
-    git clone --depth=1 https://github.com/vulhub/vulhub.git
+    git clone --depth=1 ${GH_PROXY}https://github.com/iSee857/CVE-PoC.git && \
+    git clone --depth=1 ${GH_PROXY}https://github.com/zhzyker/exphub.git && \
+    git clone --depth=1 ${GH_PROXY}https://github.com/passwa11/2023Hvv_.git && \
+    git clone --depth=1 ${GH_PROXY}https://github.com/Threekiii/Awesome-POC.git && \
+    git clone --depth=1 ${GH_PROXY}https://github.com/vulhub/vulhub.git
 
 RUN cd /tmp && \
-    wget -q "https://github.com/BurntSushi/ripgrep/releases/download/15.1.0/ripgrep_15.1.0-1_amd64.deb" -O ripgrep.deb && \
-    wget -q "https://github.com/sharkdp/fd/releases/download/v10.4.2/fd_10.4.2_amd64.deb" -O fd.deb && \
+    wget -q "${GH_PROXY}https://github.com/BurntSushi/ripgrep/releases/download/15.1.0/ripgrep_15.1.0-1_amd64.deb" -O ripgrep.deb && \
+    wget -q "${GH_PROXY}https://github.com/sharkdp/fd/releases/download/v10.4.2/fd_10.4.2_amd64.deb" -O fd.deb && \
     sudo apt install ./ripgrep.deb ./fd.deb && \
     sudo rm -rf /tmp/* && \
     sudo apt clean && \
     sudo rm -rf /var/lib/apt/lists/*
-    
+
 RUN pip3 install tccli awscli --break-system-packages && \
     sudo bash -c "$(curl -fsSL https://aliyuncli.alicdn.com/install.sh)"
 
