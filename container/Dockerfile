@@ -1,4 +1,4 @@
-FROM --platform=amd64 kalilinux/kali-rolling:latest
+FROM --platform=amd64 docker.m.daocloud.io/kalilinux/kali-rolling:latest
 
 RUN apt update && \
     apt -y install kali-linux-headless && \
